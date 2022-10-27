@@ -1,0 +1,19 @@
+--
+-- Файл сгенерирован с помощью SQLiteStudio v3.3.3 в Вт окт 25 23:39:06 2022
+--
+-- Использованная кодировка текста: UTF-8
+--
+PRAGMA foreign_keys = off;
+BEGIN TRANSACTION;
+
+-- Таблица: sorts
+CREATE TABLE sorts (Sort TEXT UNIQUE NOT NULL);
+INSERT INTO sorts (Sort) VALUES ('хиллари');
+INSERT INTO sorts (Sort) VALUES ('хайлайт');
+INSERT INTO sorts (Sort) VALUES ('хан лан');
+INSERT INTO sorts (Sort) VALUES ('Афина');
+INSERT INTO sorts (Sort) VALUES ('Америка');
+INSERT INTO sorts (Sort) VALUES ('Балерина');
+
+COMMIT TRANSACTION;
+PRAGMA foreign_keys = on;
