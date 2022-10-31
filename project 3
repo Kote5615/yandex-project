@@ -1,0 +1,219 @@
+import sys
+import logging
+import sqlite3
+from PyQt5 import uic, QtGui
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QMessageBox, QScrollArea, QVBoxLayout, \
+    QPushButton, QLineEdit
+
+alphabet = ['а', 'б', 'в', 'г', 'д', 'е', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
+            'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'э', 'ю', 'я', 'ё']
+
+
+def database(word):
+    con = sqlite3.connect("sorts_db.sqlite")
+    cur = con.cursor()
+    result = cur.execute(f"""SELECT * FROM sorts WHERE name_of_sort like '{word}'""").fetchall()
+    return result
+
+
+class StartMenu(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        window = uic.loadUi('start menu.ui', self)
+        window.setWindowTitle("органайзер садовода")
+        self.pushButton_add.clicked.connect(self.openAddItem)
+        self.search.clicked.connect(self.openSearch)
+        for i in self.buttonGroup.buttons():
+            i.clicked.connect(self.run)
+
+    def run(self):
+        letter = self.sender().text().lower()
+        print(letter)
+        self.openSearch_letter(letter)
+
+    # def database(self, letter):
+    #     con = sqlite3.connect("sorts_db.sqlite")
+    #     cur = con.cursor()
+    #     result = cur.execute(f"""SELECT * FROM sorts WHERE name_of_sort like '{letter}%'""").fetchall()
+    #
+    #     result.sort()
+    #     for elem in result:
+    #         print(*elem)
+    #     con.close()
+
+    def openAddItem(self):
+        self.open = AddItem()
+        self.open.show()
+        self.hide()
+
+    def openSearch(self):
+        self.open = Search()
+        self.open.show()
+        self.hide()
+
+    def openSearch_letter(self, letter):
+        self.open = Search(letter)
+        self.open.show()
+        self.hide()
+
+
+class AddItem(QWidget):
+    def __init__(self):
+        super().__init__()
+        window = uic.loadUi('asd.ui', self)
+        window.setWindowTitle("органайзер садовода")
+        self.addButton.clicked.connect(self.add)
+        self.cancel.clicked.connect(self.close)
+
+    def add(self):
+        name_of_sort = self.name_of_sort.text().strip().lower()
+        note = self.note.toPlainText().strip()
+        description = self.description.toPlainText().strip()
+        con = sqlite3.connect("sorts_db.sqlite")
+        cur = con.cursor()
+        if name_of_sort != '' and description != '':
+            if name_of_sort[0].lower() in alphabet and len(name_of_sort) <= 20:
+                if database(name_of_sort) == []:
+                    print(name_of_sort, note, description)
+                    cur.execute(
+                        f"INSERT INTO sorts(name_of_sort, description, note) VALUES('{name_of_sort}','{description}', '{note}')").fetchall()
+                    con.commit()
+                    con.close()
+                    # self.close
+                    self.close()
+                else:
+                    self.show_info_messagebox('Такой сорт уже есть')
+            else:
+                self.show_info_messagebox(
+                    'Название сорта должно начинаться с буквы на кириллице и быть не больше 20 символов')
+        else:
+            self.show_info_messagebox('Поля название и описание не могут оставаться пустыми')
+
+    def show_info_messagebox(self, text):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText(text)
+        msg.setWindowTitle("ВНИМАНИЕ")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        retval = msg.exec_()
+
+    def close(self):
+        AddItem.main = StartMenu()
+        AddItem.main.show()
+        self.hide()
+
+
+class Search(QScrollArea):
+    def __init__(self, *letter):
+        super(Search, self).__init__()
+
+        if letter != ():
+            self.databasebyletter(*letter)
+        else:
+            self.initUISearch()
+
+    def databasebyletter(self, letter):
+        sp = []
+        con = sqlite3.connect("sorts_db.sqlite")
+        cur = con.cursor()
+        result = cur.execute(f"""SELECT name_of_sort FROM sorts WHERE name_of_sort like '{letter}%'""").fetchall()
+        result.sort()
+        for elem in result:
+            sp.append(*elem)
+            print(*elem)
+        con.close()
+        self.initUIAlfabet(sp, letter)
+
+    def initUIAlfabet(self, sp, letter):
+        self.setGeometry(500, 300, 400, 300)
+        self.setWindowTitle(f"все сорта на букву {letter}")
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(50, 30, 50, 25)
+        for i in sp:
+            layout.addWidget(QPushButton(i.capitalize()))
+        # cancelbtn = QPushButton(self)
+        # cancelbtn.setText('Вернуться')
+        cancelbtn = QPushButton(self)
+        cancelbtn.setFont(QtGui.QFont("Times", 9))
+        cancelbtn.setText('Вернуться')
+        cancelbtn.move(10, 20)
+        cancelbtn.clicked.connect(self.close)
+        # layout.addWidget(cancelbtn)
+        # cancelbtn.clicked.connect(self.close)
+        self.setWidget(widget)
+        self.setWidgetResizable(True)
+
+    def initUISearch(self):
+        self.widget = QWidget()
+        self.layout = QVBoxLayout(self.widget)
+        self.layout.setContentsMargins(50, 90, 50, 10)
+        self.setGeometry(500, 300, 400, 300)
+        self.setWindowTitle('Поиск')
+        self.setWidget(self.widget)
+        self.setWidgetResizable(True)
+
+        self.SearchWindow = QLineEdit(self)
+        self.SearchWindow.resize(150, 25)
+        # self.SearchWindow.move(120, 25)
+        self.SearchWindow.move(120, 50)
+
+        self.label = QLabel(self)
+        self.label.setFont(QtGui.QFont("Times", 9))
+        self.label.setText('Введите поисковой запрос')
+        self.label.move(120, 30)
+
+        cancelbtn = QPushButton(self)
+        cancelbtn.setFont(QtGui.QFont("Times", 9))
+        cancelbtn.setText('Вернуться')
+        cancelbtn.move(10, 30)
+        cancelbtn.clicked.connect(self.close)
+
+        # if self.SearchWindow.textChanged == True:
+        #     print('ya')
+        self.SearchWindow.textChanged.connect(self.databaseforsearching)
+        self.SearchWindow.textChanged.connect(self.test)
+
+        # data = self.SearchWindow.textChanged
+
+        # self.searchbtn = QPushButton(self)
+        # self.cancelbtn.setText('Поиск')
+        # self.cancelbtn.move(210, 30)
+
+    def databaseforsearching(self):
+        data = self.SearchWindow.text().strip().lower()
+        con = sqlite3.connect("sorts_db.sqlite")
+        cur = con.cursor()
+        self.result = cur.execute(f"""SELECT name_of_sort FROM sorts WHERE name_of_sort like '%{data}%'""").fetchall()
+        self.result.sort()
+        print(data, self.result)
+
+        # for i in self.result:
+        #     self.layout.addWidget(QPushButton(i))
+
+    def close(self):
+        Search.main = StartMenu()
+        Search.main.show()
+        self.hide()
+
+    def test(self):
+        for i in reversed(range(self.layout.count())):
+            widgetToRemove = self.layout.itemAt(i).widget()
+            self.layout.removeWidget(widgetToRemove)
+            widgetToRemove.setParent(None)
+        for i in self.result:
+            self.layout.addWidget(QPushButton(i[0]))
+        print('tesst')
+    # def open(self):
+    #     self.open = StartMenu()
+    #     self.open.show()
+    #     self.hide()
+
+    # def initUISearch(self):
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = StartMenu()
+    ex.show()
+    sys.exit(app.exec())
